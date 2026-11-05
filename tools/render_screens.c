@@ -42,16 +42,6 @@ void lcd_text(uint8_t x, uint8_t y, const char *s, uint8_t sx, uint8_t sy, uint1
     }
 }
 
-void lcd_sprite(uint8_t x, uint8_t y, uint8_t s, const sprite_t *sp, uint16_t fg, uint16_t bg)
-{
-    unsigned i, j;
-    for (j = 0; j < (unsigned)sp->h * s; j++)
-        for (i = 0; i < (unsigned)sp->w * s; i++) {
-            int on = (sp->row[j / s] >> (sp->w - 1 - i / s)) & 1;
-            if (x + i < LCD_PX_W && y + j < LCD_PX_H) fb[y + j][x + i] = on ? fg : bg;
-        }
-}
-
 static const char *outdir;
 
 static void save(const char *name)
