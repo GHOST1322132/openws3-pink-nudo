@@ -65,8 +65,29 @@ static void centered(uint8_t y, const char *text, uint8_t sx, uint8_t sy, uint16
 #define FW_STAGE ""
 #endif
 
+/* Pictures of the PINK theme (see lcd.h for the format; a clear bit inside a picture is a hole that shows the background). */
+static const CODE sprite_t SPR_CAT_BIG = { 12, 10, { 0x402, 0x606, 0x70E, 0xFFF, 0xFFF, 0xEF7, 0xEF7, 0xFFF, 0xF9F, 0x7FE } };   /* awake, 12 x 10 */
+static const CODE sprite_t SPR_CAT   = { 7, 7, { 0x41, 0x63, 0x7F, 0x5D, 0x7F, 0x77, 0x3E } };       /* awake */
+static const CODE sprite_t SPR_CAT_Z = { 7, 7, { 0x41, 0x63, 0x7F, 0x7F, 0x5D, 0x7F, 0x3E } };       /* asleep: eyes low, no nose */
+static const CODE sprite_t SPR_HEART = { 7, 7, { 0x36, 0x7F, 0x7F, 0x3E, 0x1C, 0x08, 0x00 } };
+
+/* the boot screen of the PINK theme: logo, a cat on each side, three hearts */
+static void splash_pink(void)
+{
+    lcd_fill(0, 0, LCD_PX_W, LCD_PX_H, th(R_BG));
+    lcd_sprite(63, 8, 1, &SPR_HEART, th(R_VOLT), th(R_BG));
+    lcd_sprite(76, 8, 1, &SPR_HEART, th(R_VIN), th(R_BG));
+    lcd_sprite(89, 8, 1, &SPR_HEART, th(R_VOLT), th(R_BG));
+    lcd_sprite(12, 28, 2, &SPR_CAT_BIG, th(R_VOLT), th(R_BG));
+    lcd_sprite(124, 28, 2, &SPR_CAT_BIG, th(R_VOLT), th(R_BG));
+    centered(28, "NUDO", 3, 3, th(R_VOLT), th(R_BG));
+    lcd_fill(44, 57, 72, 2, th(R_DIM));
+    centered(66, "V" STR(FW_MAJOR) "." STR(FW_MINOR) FW_STAGE " " FW_BUILD_STR, 1, 1, th(R_DIM), th(R_BG));
+}
+
 void ui_splash(void)
 {
+    if (th_get() == TH_PINK) { splash_pink(); return; }
     lcd_fill(0, 0, LCD_PX_W, LCD_PX_H, th(R_BG));
     lcd_fill(0, 14, LCD_PX_W, 3, th(R_BAD));
     lcd_fill(0, 63, LCD_PX_W, 3, th(R_BAD));
@@ -256,7 +277,10 @@ static void element(const ui_state_t *s, uint8_t e) REENT
         st &= 7;
         fg = th(R_DOT0 + st);
         if (st == PS_FAULT && !s->blink) fg = bg;              /* errors blink */
-        if (changed(e, fg)) lcd_fill(x + UI_DOT_X, y + UI_DOT_Y, UI_DOT_S, UI_DOT_S, fg);
+        if (th_get() == TH_PINK) {                         /* PINK: a cat for a port at work, a sleeping one for an idle port, a heart when full */
+            if (st == PS_IDLE) fg = th(R_DIM);
+            if (changed(e, fg)) lcd_sprite(x + UI_DOT_X, y + UI_DOT_Y, 1, st == PS_FULL ? &SPR_HEART : st == PS_IDLE ? &SPR_CAT_Z : &SPR_CAT, fg, bg);
+        } else if (changed(e, fg)) lcd_fill(x + UI_DOT_X, y + UI_DOT_Y, UI_DOT_S, UI_DOT_S, fg);
         return;
     }
     put(e, x + FLD[part].dx, y + FLD[part].dy, FLD[part].sy, fg, bg, t);
