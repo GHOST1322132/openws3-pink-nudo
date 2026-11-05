@@ -186,24 +186,6 @@ void lcd_fill(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint16_t color)
     CS = 1;
 }
 
-void lcd_sprite(uint8_t x, uint8_t y, uint8_t s, const __code sprite_t *sp, uint16_t fg, uint16_t bg)
-{
-    uint8_t r, i, j, k, w = sp->w, h = sp->h, on;
-    uint16_t bits;
-    uint8_t fh = fg >> 8, fl = fg & 0xFF, bh = bg >> 8, bl = bg & 0xFF;
-
-    window(x, y, (uint8_t)(w * s), (uint8_t)(h * s));
-    for (r = 0; r < h; r++) {
-        bits = sp->row[r];
-        for (k = 0; k < s; k++)
-            for (i = 0; i < w; i++) {
-                on = (uint8_t)((bits >> (uint8_t)(w - 1 - i)) & 1);
-                for (j = 0; j < s; j++) { if (on) { tx(fh); tx(fl); } else { tx(bh); tx(bl); } }
-            }
-    }
-    CS = 1;
-}
-
 void lcd_text(uint8_t x, uint8_t y, const char *s, uint8_t sx, uint8_t sy, uint16_t fg, uint16_t bg)
 {
     uint8_t col[5], c, r, i, j, k, rows = FONT_H_PX * sy, cols = FONT_W * sx;

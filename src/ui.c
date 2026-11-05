@@ -65,21 +65,131 @@ static void centered(uint8_t y, const char *text, uint8_t sx, uint8_t sy, uint16
 #define FW_STAGE ""
 #endif
 
-/* Pictures of the PINK theme (see lcd.h for the format; a clear bit inside a picture is a hole that shows the background). */
-static const CODE sprite_t SPR_CAT_BIG = { 12, 10, { 0x402, 0x606, 0x70E, 0xFFF, 0xFFF, 0xEF7, 0xEF7, 0xFFF, 0xF9F, 0x7FE } };   /* awake, 12 x 10 */
-static const CODE sprite_t SPR_CAT   = { 7, 7, { 0x41, 0x63, 0x7F, 0x5D, 0x7F, 0x77, 0x3E } };       /* awake */
-static const CODE sprite_t SPR_CAT_Z = { 7, 7, { 0x41, 0x63, 0x7F, 0x7F, 0x5D, 0x7F, 0x3E } };       /* asleep: eyes low, no nose */
-static const CODE sprite_t SPR_HEART = { 7, 7, { 0x36, 0x7F, 0x7F, 0x3E, 0x1C, 0x08, 0x00 } };
+/* Pictures of the PINK theme, drawn from filled rectangles (lcd_fill) on purpose: a picture routine with loops and a data pointer needs
+ * spill slots in direct RAM, which is full (README build rules).  The ASCII art above each function is the picture; fg is the colour of
+ * the # pixels, bg the colour of the rest.  Check after a change: 'A DSEG size' and 'A OSEG size' in build/ui.rel must not grow. */
+static uint8_t XD spr_x, spr_y;                 /* where the picture being drawn sits, and its colour: set by spr_begin() */
+static uint16_t XD spr_fg;
+
+/* a rectangle of the picture, offsets from its corner */
+static void spr_r(uint8_t x, uint8_t y, uint8_t w, uint8_t h) { lcd_fill(spr_x + x, spr_y + y, w, h, spr_fg); }
+
+static void spr_begin(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint16_t fg, uint16_t bg)
+{
+    spr_x = x; spr_y = y; spr_fg = fg;
+    lcd_fill(x, y, w, h, bg);
+}
+
+/* awake cat, 12 x 10, drawn at 2x (24 x 20 px):
+ * .#........#.
+ * .##......##.
+ * .###....###.
+ * ############
+ * ############
+ * ###.####.###
+ * ###.####.###
+ * ############
+ * #####..#####
+ * .##########.
+ */
+static void spr_cat_big(uint8_t x, uint8_t y, uint16_t fg, uint16_t bg)
+{
+    spr_begin(x, y, 24, 20, fg, bg);
+    spr_r(2, 0, 2, 2);
+    spr_r(20, 0, 2, 2);
+    spr_r(2, 2, 4, 2);
+    spr_r(18, 2, 4, 2);
+    spr_r(2, 4, 6, 2);
+    spr_r(16, 4, 6, 2);
+    spr_r(0, 6, 24, 4);
+    spr_r(0, 10, 6, 4);
+    spr_r(8, 10, 8, 4);
+    spr_r(18, 10, 6, 4);
+    spr_r(0, 14, 24, 2);
+    spr_r(0, 16, 10, 2);
+    spr_r(14, 16, 10, 2);
+    spr_r(2, 18, 20, 2);
+}
+
+/* awake cat, 7 x 7:
+ * #.....#
+ * ##...##
+ * #######
+ * #.###.#
+ * #######
+ * ###.###
+ * .#####.
+ */
+static void spr_cat(uint8_t x, uint8_t y, uint16_t fg, uint16_t bg)
+{
+    spr_begin(x, y, 7, 7, fg, bg);
+    spr_r(0, 0, 1, 1);
+    spr_r(6, 0, 1, 1);
+    spr_r(0, 1, 2, 1);
+    spr_r(5, 1, 2, 1);
+    spr_r(0, 2, 7, 1);
+    spr_r(0, 3, 1, 1);
+    spr_r(2, 3, 3, 1);
+    spr_r(6, 3, 1, 1);
+    spr_r(0, 4, 7, 1);
+    spr_r(0, 5, 3, 1);
+    spr_r(4, 5, 3, 1);
+    spr_r(1, 6, 5, 1);
+}
+
+/* sleeping cat, 7 x 7 (eyes low, no nose):
+ * #.....#
+ * ##...##
+ * #######
+ * #######
+ * #.###.#
+ * #######
+ * .#####.
+ */
+static void spr_cat_z(uint8_t x, uint8_t y, uint16_t fg, uint16_t bg)
+{
+    spr_begin(x, y, 7, 7, fg, bg);
+    spr_r(0, 0, 1, 1);
+    spr_r(6, 0, 1, 1);
+    spr_r(0, 1, 2, 1);
+    spr_r(5, 1, 2, 1);
+    spr_r(0, 2, 7, 2);
+    spr_r(0, 4, 1, 1);
+    spr_r(2, 4, 3, 1);
+    spr_r(6, 4, 1, 1);
+    spr_r(0, 5, 7, 1);
+    spr_r(1, 6, 5, 1);
+}
+
+/* heart, 7 x 7:
+ * .##.##.
+ * #######
+ * #######
+ * .#####.
+ * ..###..
+ * ...#...
+ * .......
+ */
+static void spr_heart(uint8_t x, uint8_t y, uint16_t fg, uint16_t bg)
+{
+    spr_begin(x, y, 7, 7, fg, bg);
+    spr_r(1, 0, 2, 1);
+    spr_r(4, 0, 2, 1);
+    spr_r(0, 1, 7, 2);
+    spr_r(1, 3, 5, 1);
+    spr_r(2, 4, 3, 1);
+    spr_r(3, 5, 1, 1);
+}
 
 /* the boot screen of the PINK theme: logo, a cat on each side, three hearts */
 static void splash_pink(void)
 {
     lcd_fill(0, 0, LCD_PX_W, LCD_PX_H, th(R_BG));
-    lcd_sprite(63, 8, 1, &SPR_HEART, th(R_VOLT), th(R_BG));
-    lcd_sprite(76, 8, 1, &SPR_HEART, th(R_VIN), th(R_BG));
-    lcd_sprite(89, 8, 1, &SPR_HEART, th(R_VOLT), th(R_BG));
-    lcd_sprite(12, 28, 2, &SPR_CAT_BIG, th(R_VOLT), th(R_BG));
-    lcd_sprite(124, 28, 2, &SPR_CAT_BIG, th(R_VOLT), th(R_BG));
+    spr_heart(63, 8, th(R_VOLT), th(R_BG));
+    spr_heart(76, 8, th(R_VIN), th(R_BG));
+    spr_heart(89, 8, th(R_VOLT), th(R_BG));
+    spr_cat_big(12, 28, th(R_VOLT), th(R_BG));
+    spr_cat_big(124, 28, th(R_VOLT), th(R_BG));
     centered(28, "NUDO", 3, 3, th(R_VOLT), th(R_BG));
     lcd_fill(44, 57, 72, 2, th(R_DIM));
     centered(66, "V" STR(FW_MAJOR) "." STR(FW_MINOR) FW_STAGE " " FW_BUILD_STR, 1, 1, th(R_DIM), th(R_BG));
@@ -279,7 +389,11 @@ static void element(const ui_state_t *s, uint8_t e) REENT
         if (st == PS_FAULT && !s->blink) fg = bg;              /* errors blink */
         if (th_get() == TH_PINK) {                         /* PINK: a cat for a port at work, a sleeping one for an idle port, a heart when full */
             if (st == PS_IDLE) fg = th(R_DIM);
-            if (changed(e, fg)) lcd_sprite(x + UI_DOT_X, y + UI_DOT_Y, 1, st == PS_FULL ? &SPR_HEART : st == PS_IDLE ? &SPR_CAT_Z : &SPR_CAT, fg, bg);
+            if (changed(e, fg)) {
+                if (st == PS_FULL) spr_heart(x + UI_DOT_X, y + UI_DOT_Y, fg, bg);
+                else if (st == PS_IDLE) spr_cat_z(x + UI_DOT_X, y + UI_DOT_Y, fg, bg);
+                else spr_cat(x + UI_DOT_X, y + UI_DOT_Y, fg, bg);
+            }
         } else if (changed(e, fg)) lcd_fill(x + UI_DOT_X, y + UI_DOT_Y, UI_DOT_S, UI_DOT_S, fg);
         return;
     }
