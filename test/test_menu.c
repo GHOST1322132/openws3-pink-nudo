@@ -158,8 +158,8 @@ static void t_theme(void)
     CHECK(has(menu_text(2), "THEME") && has(menu_text(2), "CLASSIC"));
     edit();
     for (n = 0; n < TH_COUNT + 2; n++) more(1);
-    CHECK(settings.theme == TH_COUNT - 1 && has(menu_text(2), "HIGH CONTRAST"));
-    less(1); CHECK(settings.theme == TH_CONTRAST - 1);
+    CHECK(settings.theme == TH_COUNT - 1 && has(menu_text(2), "PINK"));
+    less(1); CHECK(settings.theme == TH_CONTRAST && has(menu_text(2), "HIGH CONTRAST"));
     cancel(); CHECK(settings.theme == TH_CLASSIC);
 }
 
