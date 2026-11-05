@@ -1,3 +1,5 @@
+# Builds the firmware with SDCC 4.6.0 (the release it is built and tested with) and attaches fw.bin and openws3.html to the run.
+# Run it from the Actions tab ("Build firmware" > Run workflow), or it runs on every push.  Do not use "Re-run": it rebuilds the old commit.
 name: Build firmware
 on:
   push:
@@ -8,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with: { fetch-depth: 0 }      # the build id comes from git
       - name: SDCC 4.6.0
         run: |
           curl -fsSL -o sdcc.tar.bz2 https://sourceforge.net/projects/sdcc/files/sdcc-linux-amd64/4.6.0/sdcc-4.6.0-amd64-unknown-linux2.5.tar.bz2/download
@@ -17,6 +19,32 @@ jobs:
           echo "$RUNNER_TEMP/sdcc-4.6.0/bin" >> "$GITHUB_PATH"
       - run: make test
       - run: make
+      - name: Direct RAM report
+        if: always()
+        run: |
+          # The chip's direct RAM is full: a build that needs more fails to link.  This builds the original OpenWS3 next to this one and
+          # lists the modules that use more direct RAM (hex bytes: A DSEG size / A OSEG size) than the original.
+          git clone -q https://github.com/openws3/openws3.git base && git -C base checkout -q b20df96 && make -C base > /dev/null 2>&1
+          echo "== compiler: $(sdcc --version | head -1)"
+          echo "== original OpenWS3 image: $(stat -c %s base/build/fw.bin 2>/dev/null || echo 'did not build') bytes"
+          echo "== modules whose direct RAM differs from the original:"
+          for f in build/*.rel; do
+            m=$(basename "$f" .rel)
+            b="$(awk '/^A DSEG size/{print $4}' base/build/$m.rel 2>/dev/null)/$(awk '/^A OSEG size/{print $4}' base/build/$m.rel 2>/dev/null)"
+            n="$(awk '/^A DSEG size/{print $4}' build/$m.rel)/$(awk '/^A OSEG size/{print $4}' build/$m.rel)"
+            if [ "$b" != "$n" ]; then echo "$m: original $b  now $n"; fi
+          done
+          echo "== end of report"
+      - name: Keep the build files for diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-build
+          path: |
+            build/*.rel
+            build/*.asm
+            base/build/*.rel
+            base/build/*.asm
       - run: sha256sum build/fw.bin build/openws3.html | tee build/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
